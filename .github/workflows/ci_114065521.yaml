@@ -28,4 +28,9 @@ jobs:
         run: npm run format
 
       - name: Run Tests
-        run: npm test
+        run: npm test -- --coverage
+
+      - name: Write Summary
+        run: |
+          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "Tests executed successfully" >> $GITHUB_STEP_SUMMARY
