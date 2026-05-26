@@ -35,14 +35,13 @@ jobs:
       - name: Run Tests
         run: npm test
 
-      # detailed checks
       - name: Publish Test Report
         uses: dorny/test-reporter@v1
         if: always()
         with:
           name: Vitest Tests
-          path: test-results.json
-          reporter: vitest-json
+          path: test-results.xml
+          reporter: jest-junit
 
       # Workflow 主頁 Summary
       - name: Generate Workflow Summary
