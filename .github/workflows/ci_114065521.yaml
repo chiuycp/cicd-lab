@@ -30,6 +30,17 @@ jobs:
       - name: Run Tests
         run: npm test -- --coverage
 
+      - name: Run Tests
+        run: npm test
+
+      - name: Test Report
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Vitest Tests
+          path: test-results.xml
+          reporter: jest-junit
+
       - name: Write Summary
         run: |
           echo "## Test Results" >> $GITHUB_STEP_SUMMARY
