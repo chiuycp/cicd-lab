@@ -3,7 +3,7 @@ import { buildApp } from '../src/app';
 
 describe('Fastify app', () => {
   it('GET /health returns ok status', async () => {
-    const app = buildApp({ logger: false });
+    const app = buildApp({ logger: false })
     const response = await app.inject({
       method: 'GET',
       url: '/health'
@@ -11,7 +11,6 @@ describe('Fastify app', () => {
 
     expect(response.statusCode).toBe(200);
     // fail case
-    //expect(1 + 1).toBe(3);
     expect(response.json()).toEqual({ status: 'ok' });
     await app.close();
   });
