@@ -34,10 +34,13 @@ jobs:
       - name: Run Tests
         run: npm test -- --coverage
 
-      - name: Add Summary
+      - name: Show Summary
         if: always()
-        run: echo "## Test Completed" >> $GITHUB_STEP_SUMMARY
-
+        run: |
+          echo "## 🧪 Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          cat test-results.xml >> $GITHUB_STEP_SUMMARY
+          
       - name: Test Report
         uses: dorny/test-reporter@v1
         if: always()
