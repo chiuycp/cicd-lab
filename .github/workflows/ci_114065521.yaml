@@ -47,30 +47,40 @@ jobs:
       - name: Generate Workflow Summary
         if: always()
         run: |
-          echo "## Vitest Test Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          python3 <<EOF
+          import xml.etree.ElementTree as ET
 
-          TOTAL=$(cat test-results.json | jq '.numTotalTests')
-          PASSED=$(cat test-results.json | jq '.numPassedTests')
-          FAILED=$(cat test-results.json | jq '.numFailedTests')
-          DURATION=$(cat test-results.json | jq '.testResults | map(.endTime - .startTime) | add')
+          tree = ET.parse('test-results.xml')
+          root = tree.getroot()
 
-          echo "| Metric | Result |" >> $GITHUB_STEP_SUMMARY
-          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-          echo "| Total Tests | $TOTAL |" >> $GITHUB_STEP_SUMMARY
-          echo "| Passed | ✅ $PASSED |" >> $GITHUB_STEP_SUMMARY
-          echo "| Failed | ❌ $FAILED |" >> $GITHUB_STEP_SUMMARY
-          echo "| Duration | ${DURATION}ms |" >> $GITHUB_STEP_SUMMARY
+          total = 0
+          failed = 0
+          time = 0.0
 
-          echo "" >> $GITHUB_STEP_SUMMARY
+          # 支援 testsuite / testsuites
+          suites = []
 
-          if [ "$FAILED" -ne 0 ]; then
-            echo "## ❌ Failed Tests" >> $GITHUB_STEP_SUMMARY
+          if root.tag == 'testsuite':
+              suites = [root]
+          else:
+              suites = root.findall('testsuite')
 
-            cat test-results.json \
-              | jq -r '
-                .testResults[]
-                | select(.status=="failed")
-                | "- " + .name
-              ' >> $GITHUB_STEP_SUMMARY
-          fi
+          for suite in suites:
+              total += int(suite.attrib.get('tests', 0))
+              failed += int(suite.attrib.get('failures', 0))
+              time += float(suite.attrib.get('time', 0))
+
+          passed = total - failed
+
+          with open('${GITHUB_STEP_SUMMARY}', 'a') as f:
+              f.write('## 🧪 Vitest Test Report\n\n')
+              f.write('| Metric | Result |\n')
+              f.write('|---|---|\n')
+              f.write(f'| Total Tests | {total} |\n')
+              f.write(f'| Passed | ✅ {passed} |\n')
+              f.write(f'| Failed | ❌ {failed} |\n')
+              f.write(f'| Duration | {time:.2f}s |\n')
+          EOF
+
+      - name: Debug XML
+        run: cat test-results.xml
