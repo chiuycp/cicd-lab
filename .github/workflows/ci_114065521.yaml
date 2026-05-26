@@ -73,7 +73,7 @@ jobs:
           passed = total - failed
 
           with open('${GITHUB_STEP_SUMMARY}', 'a') as f:
-              f.write('## 🧪 Vitest Test Report\n\n')
+              f.write('## Vitest Test Report\n\n')
               f.write('| Metric | Result |\n')
               f.write('|---|---|\n')
               f.write(f'| Total Tests | {total} |\n')
