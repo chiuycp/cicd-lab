@@ -3,7 +3,7 @@ name: CI Pipeline
 on:
   push:
     branches:
-            - "**"
+      - "**"
 
 permissions:
   contents: read
@@ -21,6 +21,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
       - name: Install dependencies
         run: npm ci
@@ -32,27 +33,45 @@ jobs:
         run: npm run format
 
       - name: Run Tests
-        run: npm test -- --coverage
+        run: npm test
 
-      # Upload structured test report
-      - name: Test Report
+      # detailed checks
+      - name: Publish Test Report
         uses: dorny/test-reporter@v1
         if: always()
         with:
           name: Vitest Tests
-          path: test-results.xml
-          reporter: jest-junit
+          path: test-results.json
+          reporter: vitest-json
 
-      # 📌 Clean CI Summary (IMPORTANT)
-      - name: Write CI Summary
+      # Workflow 主頁 Summary
+      - name: Generate Workflow Summary
         if: always()
         run: |
-          echo "## 🧪 CI Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## Vitest Test Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          echo "### Coverage Report" >> $GITHUB_STEP_SUMMARY
-          cat coverage/coverage-summary.json >> $GITHUB_STEP_SUMMARY || echo "No coverage file found" >> $GITHUB_STEP_SUMMARY
+          TOTAL=$(cat test-results.json | jq '.numTotalTests')
+          PASSED=$(cat test-results.json | jq '.numPassedTests')
+          FAILED=$(cat test-results.json | jq '.numFailedTests')
+          DURATION=$(cat test-results.json | jq '.testResults | map(.endTime - .startTime) | add')
+
+          echo "| Metric | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Total Tests | $TOTAL |" >> $GITHUB_STEP_SUMMARY
+          echo "| Passed | ✅ $PASSED |" >> $GITHUB_STEP_SUMMARY
+          echo "| Failed | ❌ $FAILED |" >> $GITHUB_STEP_SUMMARY
+          echo "| Duration | ${DURATION}ms |" >> $GITHUB_STEP_SUMMARY
 
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Test Report Location" >> $GITHUB_STEP_SUMMARY
-          echo "See 'Tests' tab above for detailed results." >> $GITHUB_STEP_SUMMARY
+
+          if [ "$FAILED" -ne 0 ]; then
+            echo "## ❌ Failed Tests" >> $GITHUB_STEP_SUMMARY
+
+            cat test-results.json \
+              | jq -r '
+                .testResults[]
+                | select(.status=="failed")
+                | "- " + .name
+              ' >> $GITHUB_STEP_SUMMARY
+          fi
