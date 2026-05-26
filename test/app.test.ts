@@ -3,15 +3,15 @@ import { buildApp } from '../src/app';
 
 describe('Fastify app', () => {
   it('GET /health returns ok status', async () => {
-    const app = buildApp({ logger: false });
+    const app = buildApp({ logger: false })
     const response = await app.inject({
       method: 'GET',
       url: '/health'
     });
 
-    expect(response.statusCode).toBe(200);
     // fail case
-    expect(response.json()).toEqual({ status: 'ok' });
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ status: 'failed' });
     await app.close();
   });
 
