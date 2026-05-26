@@ -34,13 +34,7 @@ jobs:
       - name: Run Tests
         run: npm test -- --coverage
 
-      - name: Show Summary
-        if: always()
-        run: |
-          echo "## 🧪 Test Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          cat test-results.xml >> $GITHUB_STEP_SUMMARY
-          
+      # Upload structured test report
       - name: Test Report
         uses: dorny/test-reporter@v1
         if: always()
@@ -49,7 +43,16 @@ jobs:
           path: test-results.xml
           reporter: jest-junit
 
-      - name: Write Summary
+      # 📌 Clean CI Summary (IMPORTANT)
+      - name: Write CI Summary
+        if: always()
         run: |
-          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "Tests executed successfully" >> $GITHUB_STEP_SUMMARY
+          echo "## 🧪 CI Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### Coverage Report" >> $GITHUB_STEP_SUMMARY
+          cat coverage/coverage-summary.json >> $GITHUB_STEP_SUMMARY || echo "No coverage file found" >> $GITHUB_STEP_SUMMARY
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Test Report Location" >> $GITHUB_STEP_SUMMARY
+          echo "See 'Tests' tab above for detailed results." >> $GITHUB_STEP_SUMMARY

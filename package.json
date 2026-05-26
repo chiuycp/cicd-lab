@@ -9,7 +9,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --reporter=verbose --reporter=junit --outputFile=test-results.xml",
+    "test": "vitest run --coverage --reporter=verbose --reporter=junit --outputFile=test-results.xml",
     "test:watch": "vitest",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
