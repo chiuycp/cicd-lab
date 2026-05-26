@@ -30,9 +30,6 @@ jobs:
       - name: Run Tests
         run: npm test -- --coverage
 
-      - name: Run Tests
-        run: npm test
-
       - name: Test Report
         uses: dorny/test-reporter@v1
         if: always()
