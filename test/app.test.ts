@@ -8,8 +8,8 @@ describe('Fastify app', () => {
       method: 'GET',
       url: '/health'
     });
-
-    expect(response.statusCode).toBe(200);
+    // fail case: 200 -> 404
+    expect(response.statusCode).toBe(404);
     expect(response.json()).toEqual({ status: 'ok' });
     await app.close();
   });
