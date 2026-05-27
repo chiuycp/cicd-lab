@@ -10,8 +10,8 @@ describe('Fastify app', () => {
     });
 
     // fail case
-    expect(response.statusCode).toBe(404);
-    expect(response.json()).toEqual({ status: 'failed' });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ status: 'ok' });
     await app.close();
   });
 

@@ -5,13 +5,15 @@ on:
     branches:
       - "**"
 
-permissions:
-  contents: read
-  checks: write
-
 jobs:
-  ci:
+  build-and-test:
     runs-on: ubuntu-latest
+    
+    # 【關鍵設定】：dorny/test-reporter 需要寫入 checks 的權限才能在 UI 顯示報告
+    permissions:
+      contents: read
+      actions: read
+      checks: write 
 
     steps:
       - name: Checkout repository
@@ -20,67 +22,25 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version: '20' # 請替換成你專案使用的 Node 版本
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci # 在 CI 環境中建議使用 npm ci 確保依賴版本與 package-lock.json 完全一致
 
-      - name: TypeScript Type Check
+      - name: Prettier check
+        run: npm run prettier:check
+
+      - name: TypeScript typecheck
         run: npm run typecheck
 
-      - name: Prettier Check
-        run: npm run format
-
       - name: Run Tests
-        run: npm test
+        run: npm run test:ci
 
+      # 【關鍵設定】：使用 dorny/test-reporter 顯示測試結果
       - name: Publish Test Report
         uses: dorny/test-reporter@v1
-        if: always()
+        if: success() || failure() # 確保即使前面的測試失敗 (failure)，這個步驟依然會執行來產出報告
         with:
-          name: Vitest Tests
-          path: test-results.xml
-          reporter: jest-junit
-
-      # Workflow 主頁 Summary
-      - name: Generate Workflow Summary
-        if: always()
-        run: |
-          python3 <<EOF
-          import xml.etree.ElementTree as ET
-
-          tree = ET.parse('test-results.xml')
-          root = tree.getroot()
-
-          total = 0
-          failed = 0
-          time = 0.0
-
-          # 支援 testsuite / testsuites
-          suites = []
-
-          if root.tag == 'testsuite':
-              suites = [root]
-          else:
-              suites = root.findall('testsuite')
-
-          for suite in suites:
-              total += int(suite.attrib.get('tests', 0))
-              failed += int(suite.attrib.get('failures', 0))
-              time += float(suite.attrib.get('time', 0))
-
-          passed = total - failed
-
-          with open('${GITHUB_STEP_SUMMARY}', 'a') as f:
-              f.write('## Vitest Test Report\n\n')
-              f.write('| Metric | Result |\n')
-              f.write('|---|---|\n')
-              f.write(f'| Total Tests | {total} |\n')
-              f.write(f'| Passed | ✅ {passed} |\n')
-              f.write(f'| Failed | ❌ {failed} |\n')
-              f.write(f'| Duration | {time:.2f}s |\n')
-          EOF
-
-      - name: Debug XML
-        run: cat test-results.xml
+          name: Jest Test Results      # 顯示在 GitHub 上的報告標題
+          path: reports/jest-junit.xml # 剛剛在 package.json 設定的報告輸出路徑
+          reporter: jest-junit         # 指定解析格式
