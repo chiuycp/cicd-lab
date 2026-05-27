@@ -9,7 +9,6 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
-    # 【關鍵設定】：dorny/test-reporter 需要寫入 checks 的權限才能在 UI 顯示報告
     permissions:
       contents: read
       actions: read
@@ -22,10 +21,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20' # 請替換成你專案使用的 Node 版本
+          node-version: '20'
 
       - name: Install dependencies
-        run: npm ci # 在 CI 環境中建議使用 npm ci 確保依賴版本與 package-lock.json 完全一致
+        run: npm ci
 
       - name: Prettier check
         run: npm run format:check
@@ -36,11 +35,73 @@ jobs:
       - name: Run Tests
         run: npm run test
 
-      # 【關鍵設定】：使用 dorny/test-reporter 顯示測試結果
-      - name: Publish Test Report
+      # 這裡依然保留 dorny，作為雙重保險（若作業評分有看 Checks 分頁的話）
+      - name: Publish Detailed Test Report (Checks Tab)
         uses: dorny/test-reporter@v1
-        if: success() || failure() # 確保即使前面的測試失敗 (failure)，這個步驟依然會執行來產出報告
+        if: success() || failure()
         with:
-          name: Jest Test Results # 顯示在 GitHub 上的報告標題
-          path: test-results.xml # 剛剛在 package.json 設定的報告輸出路徑
-          reporter: jest-junit # 指定解析格式
+          name: Vitest Detailed Test Results
+          path: test-results.xml
+          reporter: jest-junit
+
+      # 【核心修正】：直接在 Workflow 主頁面輸出「全測試案例清單與錯誤 Log」
+      - name: Generate Full Detailed Summary on Main Page
+        if: success() || failure()
+        run: |
+          python3 << 'EOF'
+          import xml.etree.ElementTree as ET
+          import os
+          import html
+
+          summary_file = os.environ.get('GITHUB_STEP_SUMMARY')
+          if not summary_file:
+              exit(0)
+
+          try:
+              # 讀取 Vitest 產出的 XML
+              tree = ET.parse('test-results.xml')
+              root = tree.getroot()
+              
+              with open(summary_file, 'a', encoding='utf-8') as f:
+                  f.write('# Vitest 完整測試詳細報告 (Full Test Report)\n\n')
+                  
+                  # 取得所有的測試套件 (TestSuite)
+                  suites = [root] if root.tag == 'testsuite' else root.findall('.//testsuite')
+                  
+                  for suite in suites:
+                      suite_name = suite.attrib.get('name', 'Test Suite')
+                      total_tests = suite.attrib.get('tests', '0')
+                      total_failures = suite.attrib.get('failures', '0')
+                      suite_time = suite.attrib.get('time', '0')
+                      
+                      # 輸出測試檔案標題
+                      f.write(f'## 測試檔案: `{suite_name}`\n')
+                      f.write(f'> 統計: 共 {total_tests} 個測試項目 | 失敗: {total_failures} | 耗時: {suite_time}s\n\n')
+                      
+                      # 遍歷該套件下的每一個測試案例 (TestCase)
+                      for case in suite.findall('.//testcase'):
+                          case_name = case.attrib.get('name', 'Unnamed Case')
+                          case_time = case.attrib.get('time', '0')
+                          
+                          failure = case.find('failure')
+                          
+                          if failure is not None:
+                              # 如果測試失敗：印出紅叉叉，並用 <details> 把詳細 Error Stack 塞進去
+                              f.write(f'* ❌ **{case_name}** ({case_time}s)\n')
+                              
+                              err_msg = failure.attrib.get('message', 'Assertion Error')
+                              err_stack = failure.text or 'No stack trace available'
+                              
+                              # 建立可展開的摺疊區塊，直接在主頁呈現詳細錯誤
+                              f.write(f'  <details><summary><b>點擊查看詳細錯誤訊息 (Error Log)：</b> <code>{html.escape(err_msg)}</code></summary>\n\n')
+                              f.write(f'  ```text\n  {err_stack.strip()}\n  ```\n  </details>\n\n')
+                          else:
+                              # 如果測試通過：印出綠色勾勾
+                              f.write(f'* ✅ {case_name} ({case_time}s)\n')
+                              
+                      f.write('\n---\n\n') # 分隔線
+                      
+          except Exception as e:
+              with open(summary_file, 'a', encoding='utf-8') as f:
+                  f.write(f'# ❌ 詳細報告解析失敗\n原因: {e}\n')
+          EOF
