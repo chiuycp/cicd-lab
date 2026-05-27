@@ -1,0 +1,119 @@
+name: CI Homework
+
+on:
+  push:
+    branches:
+      - '**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-homework-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Typecheck, Format, and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Prettier check
+        run: npm run format:check
+
+      - name: Run tests and create JUnit report
+        run: |
+          set -o pipefail
+          mkdir -p reports
+          npm test -- --reporter=default --reporter=junit --outputFile.junit=reports/vitest-junit.xml | tee reports/vitest-output.txt
+
+      - name: Publish test summary to workflow page
+        if: always()
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          const summaryPath = process.env.GITHUB_STEP_SUMMARY;
+          const junitPath = 'reports/vitest-junit.xml';
+          const outputPath = 'reports/vitest-output.txt';
+
+          const lines = ['## Vitest Test Summary', ''];
+
+          if (fs.existsSync(junitPath)) {
+            const xml = fs.readFileSync(junitPath, 'utf8');
+            const suites = [...xml.matchAll(/<testsuite\b[^>]*>/g)].map((match) => match[0]);
+            const cases = [...xml.matchAll(/<testcase\b([^>]*)>([\s\S]*?)<\/testcase>|<testcase\b([^>]*)\/>/g)];
+
+            const sum = (name) =>
+              suites.reduce((total, suite) => {
+                const match = suite.match(new RegExp(`${name}="([^"]*)"`));
+                return total + Number(match?.[1] ?? 0);
+              }, 0);
+
+            const tests = sum('tests');
+            const failures = sum('failures');
+            const errors = sum('errors');
+            const skipped = sum('skipped');
+            const passed = tests - failures - errors - skipped;
+            const time = sum('time').toFixed(2);
+
+            lines.push(`- Total: ${tests}`);
+            lines.push(`- Passed: ${passed}`);
+            lines.push(`- Failed: ${failures + errors}`);
+            lines.push(`- Skipped: ${skipped}`);
+            lines.push(`- Duration: ${time}s`);
+            lines.push('');
+            lines.push('| Test | Result |');
+            lines.push('| --- | --- |');
+
+            for (const testCase of cases) {
+              const attrs = testCase[1] || testCase[3] || '';
+              const body = testCase[2] || '';
+              const className = attrs.match(/classname="([^"]*)"/)?.[1] ?? '';
+              const name = attrs.match(/name="([^"]*)"/)?.[1] ?? 'Unnamed test';
+              const status = body.includes('<failure') || body.includes('<error') ? 'Failed' : body.includes('<skipped') ? 'Skipped' : 'Passed';
+              lines.push(`| ${className} ${name} | ${status} |`);
+            }
+          } else {
+            lines.push('JUnit report was not generated. Check the test step log for details.');
+          }
+
+          if (fs.existsSync(outputPath)) {
+            const output = fs.readFileSync(outputPath, 'utf8').trim();
+            if (output) {
+              lines.push('');
+              lines.push('<details>');
+              lines.push('<summary>Raw Vitest output</summary>');
+              lines.push('');
+              lines.push('```text');
+              lines.push(output);
+              lines.push('```');
+              lines.push('</details>');
+            }
+          }
+
+          fs.appendFileSync(summaryPath, `${lines.join('\n')}\n`);
+          NODE
+
+      - name: Upload test report artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: vitest-report
+          path: reports/
+          if-no-files-found: warn
