@@ -3,17 +3,17 @@ name: CI Pipeline
 on:
   push:
     branches:
-      - "**"
+      - '**'
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    
+
     # 【關鍵設定】：dorny/test-reporter 需要寫入 checks 的權限才能在 UI 顯示報告
     permissions:
       contents: read
       actions: read
-      checks: write 
+      checks: write
 
     steps:
       - name: Checkout repository
@@ -41,6 +41,6 @@ jobs:
         uses: dorny/test-reporter@v1
         if: success() || failure() # 確保即使前面的測試失敗 (failure)，這個步驟依然會執行來產出報告
         with:
-          name: Jest Test Results      # 顯示在 GitHub 上的報告標題
+          name: Jest Test Results # 顯示在 GitHub 上的報告標題
           path: test-results.xml # 剛剛在 package.json 設定的報告輸出路徑
-          reporter: jest-junit         # 指定解析格式
+          reporter: jest-junit # 指定解析格式
