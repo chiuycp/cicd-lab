@@ -1,2 +1,5 @@
-dist/
-node_modules/
+# 忽略不需要排版的資料夾與檔案
+node_modules
+dist
+coverage
+*.xml
