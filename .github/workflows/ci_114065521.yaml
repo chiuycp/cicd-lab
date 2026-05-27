@@ -42,5 +42,5 @@ jobs:
         if: success() || failure() # 確保即使前面的測試失敗 (failure)，這個步驟依然會執行來產出報告
         with:
           name: Jest Test Results      # 顯示在 GitHub 上的報告標題
-          path: reports/jest-junit.xml # 剛剛在 package.json 設定的報告輸出路徑
+          path: test-results.xml # 剛剛在 package.json 設定的報告輸出路徑
           reporter: jest-junit         # 指定解析格式
