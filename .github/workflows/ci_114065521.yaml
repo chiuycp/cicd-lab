@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: read
+  actions: read
+  checks: write
 
 concurrency:
   group: ci-homework-${{ github.ref }}
@@ -109,6 +111,14 @@ jobs:
 
           fs.appendFileSync(summaryPath, `${lines.join('\n')}\n`);
           NODE
+
+      - name: Publish dorny test report
+        if: always()
+        uses: dorny/test-reporter@v3
+        with:
+          name: Vitest Tests
+          path: reports/vitest-junit.xml
+          reporter: java-junit
 
       - name: Upload test report artifact
         if: always()
