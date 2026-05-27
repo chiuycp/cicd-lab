@@ -28,7 +28,7 @@ jobs:
         run: npm ci # 在 CI 環境中建議使用 npm ci 確保依賴版本與 package-lock.json 完全一致
 
       - name: Prettier check
-        run: npm run prettier:check
+        run: npm run format:check
 
       - name: TypeScript typecheck
         run: npm run typecheck
