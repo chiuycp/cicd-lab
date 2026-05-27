@@ -34,7 +34,7 @@ jobs:
         run: npm run typecheck
 
       - name: Run Tests
-        run: npm run test:ci
+        run: npm run test
 
       # 【關鍵設定】：使用 dorny/test-reporter 顯示測試結果
       - name: Publish Test Report
